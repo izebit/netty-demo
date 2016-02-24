@@ -11,5 +11,5 @@ public interface SuperService {
      * которую «несет» на своей верхней (горизонтальной) грани
      * соответствующий элемент на соответствующем уровне.
      */
-    Double getHumanEdgeWeight(int level, int index) throws Exception;
+    Double getHumanEdgeWeight(int level, int index);
 }

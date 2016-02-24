@@ -12,7 +12,7 @@ public class ResultCacheImpl<T> implements ResultCache<T> {
                     .build();
 
     private static Integer getKey(int level, int index) {
-        return level * 10 + (level - index);
+        return level * 10 + (index > level / 2 ? level - index : index);
     }
 
     public Optional<T> getCachedResult(int level, int index) {
