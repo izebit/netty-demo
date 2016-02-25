@@ -27,11 +27,11 @@ public class NettyServer implements HttpServer {
     /**
      * верняя граница скорости исходящего трафика байт/сек для одного канала
      */
-    private static final int WRITE_LIMIT = 1_000;
+    private static final int WRITE_LIMIT = 100_000;
     /**
      * верняя граница скорости входящего трафика байт/сек для одного канала
      */
-    private static final int READ_LIMIT = 1_000;
+    private static final int READ_LIMIT = 100_000;
 
 
     private ServerBootstrap server;
