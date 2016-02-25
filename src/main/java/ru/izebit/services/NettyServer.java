@@ -1,71 +1,48 @@
-package ru.izebit.utils;
+package ru.izebit.services;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpRequestDecoder;
+import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.codec.http.cors.CorsConfig;
 import io.netty.handler.codec.http.cors.CorsHandler;
+import io.netty.handler.traffic.ChannelTrafficShapingHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.izebit.handlers.FilterHandler;
-import ru.izebit.handlers.RequestHandler;
-import ru.izebit.handlers.ResponseHandler;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import ru.izebit.configuration.BeanConfiguration;
 
-import java.nio.charset.StandardCharsets;
-
-public class NettyServer {
+@Component
+public class NettyServer implements HttpServer {
     private static final Logger LOGGER = LogManager.getLogger(NettyServer.class);
 
-    private final String address;
-    private final int port;
+    /**
+     * верняя граница скорости исходящего трафика байт/сек для одного канала
+     */
+    private static final int WRITE_LIMIT = 1_000;
+    /**
+     * верняя граница скорости входящего трафика байт/сек для одного канала
+     */
+    private static final int READ_LIMIT = 1_000;
+
 
     private ServerBootstrap server;
     private ChannelFuture channelFuture;
 
-    public NettyServer(String address, int port) {
-        this.address = address;
-        this.port = port;
-    }
+    @Autowired
+    private BeanConfiguration beanConfiguration;
 
-    public static void breakConnection(ChannelHandlerContext ctx, String errorMessage, Throwable... exception) {
-        FullHttpResponse response;
-        if (errorMessage == null) {
+    @Override
+    public void start(String address, int port) throws Exception {
 
-            String errorText = "ошибка на сервере ";
-            if (exception.length == 1) errorText += ":" + exception[0].getMessage();
-
-            ByteBuf content = Unpooled.copiedBuffer(errorText, StandardCharsets.UTF_8);
-            response =
-                    new DefaultFullHttpResponse(
-                            HttpVersion.HTTP_1_1,
-                            HttpResponseStatus.INTERNAL_SERVER_ERROR,
-                            content);
-        } else {
-
-            ByteBuf content = Unpooled.copiedBuffer(errorMessage, StandardCharsets.UTF_8);
-            response =
-                    new DefaultFullHttpResponse(
-                            HttpVersion.HTTP_1_1,
-                            HttpResponseStatus.BAD_REQUEST,
-                            content);
-        }
-
-        response.headers().set(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
-        response.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain");
-        response.headers().set(HttpHeaders.Names.CONTENT_LENGTH, response.content().readableBytes());
-        response.headers().set(HttpHeaders.Names.ACCEPT_CHARSET, StandardCharsets.UTF_8.name());
-
-
-        ChannelFuture channelFuture = ctx.writeAndFlush(response);
-        channelFuture.addListener(ChannelFutureListener.CLOSE);
-    }
-
-    public void start() throws InterruptedException {
         LOGGER.info("запуск сервера...");
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
@@ -86,9 +63,10 @@ public class NettyServer {
                                     .addLast(new HttpRequestDecoder())
                                     .addLast(new HttpObjectAggregator(Integer.MAX_VALUE))
                                     .addLast(new CorsHandler(corsConfig))
-                                    .addLast(new FilterHandler())
-                                    .addLast(new RequestHandler())
-                                    .addLast(new ResponseHandler());
+                                    .addLast(beanConfiguration.getFilterHandler())
+                                    .addLast(beanConfiguration.getWorkHandler())
+                                    .addLast(beanConfiguration.getResponseHandler())
+                                    .addLast(new ChannelTrafficShapingHandler(WRITE_LIMIT, READ_LIMIT));
                         }
                     })
                     .option(ChannelOption.SO_BACKLOG, 500)
@@ -105,10 +83,10 @@ public class NettyServer {
         }
     }
 
+    @Override
     public void stop() {
         server.group().shutdownGracefully();
         channelFuture = channelFuture.channel().close();
         channelFuture.awaitUninterruptibly();
     }
-
 }

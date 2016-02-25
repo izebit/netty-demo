@@ -2,9 +2,11 @@ package ru.izebit.services;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Service
 public class ResultCacheImpl<T> implements ResultCache<T> {
     private final Cache<Integer, Optional<T>> cache =
             Caffeine.newBuilder()

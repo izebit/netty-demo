@@ -3,7 +3,9 @@ package ru.izebit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.izebit.utils.NettyServer;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import ru.izebit.configuration.BeanConfiguration;
+import ru.izebit.services.HttpServer;
 
 public class Application {
     private static final Logger LOGGER = LogManager.getLogger(Application.class);
@@ -23,10 +25,12 @@ public class Application {
             System.exit(-1);
         }
 
-        NettyServer server = new NettyServer(address, port);
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(BeanConfiguration.class);
+        HttpServer server = context.getBean(HttpServer.class);
+
         try {
-            server.start();
-        } catch (InterruptedException ex) {
+            server.start(address, port);
+        } catch (Exception ex) {
             LOGGER.error("ошибка во время запуска сервера", ex);
             System.exit(-1);
         }

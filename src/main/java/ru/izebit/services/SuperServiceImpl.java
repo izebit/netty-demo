@@ -1,12 +1,16 @@
 package ru.izebit.services;
 
 import lombok.Setter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Service
 public class SuperServiceImpl implements SuperService {
 
     @Setter
+    @Autowired
     private ResultCache<Double> cache;
 
     //симметричные элементы относительно середины пирамиды имеют одинаковые значения
@@ -23,17 +27,16 @@ public class SuperServiceImpl implements SuperService {
         if (cachedResult.isPresent()) return cachedResult.get();
 
         //вычисление значения
-        double[][] results = new double[level + 1][];
+        double[][] results = new double[2][level / 2 + 1];
         LABEL:
         for (int i = 0; i <= level; i++) {
-            results[i] = new double[i / 2 + 1];
             for (int j = 0; j <= i; j++) {
                 getWeightForCell(i, j, results);
                 if (j == index && i == level) break LABEL;
             }
         }
 
-        double result = results[level][getIndex(level, index)];
+        double result = results[level % 2][getIndex(level, index)];
         cache.putCachedResult(level, index, result);
         return result;
     }
@@ -44,16 +47,16 @@ public class SuperServiceImpl implements SuperService {
         int arrayIndex = getIndex(level - 1, index - 1);
         double leftResult = 0;
         if (arrayIndex >= 0 && arrayIndex <= level - 1)
-            leftResult = results[level - 1][arrayIndex] + 50;
+            leftResult = results[(level - 1) % 2][arrayIndex] + 50;
 
         arrayIndex = getIndex(level - 1, index);
         double rightResult = 0;
         if (arrayIndex >= 0)
-            rightResult = results[level - 1][getIndex(level - 1, index)] + 50;
+            rightResult = results[(level - 1) % 2][getIndex(level - 1, index)] + 50;
 
         double result = leftResult / 2 + rightResult / 2;
 
         arrayIndex = getIndex(level, index);
-        return results[level][arrayIndex] = result;
+        return results[level % 2][arrayIndex] = result;
     }
 }
