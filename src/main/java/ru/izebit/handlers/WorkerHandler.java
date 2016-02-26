@@ -44,5 +44,6 @@ public class WorkerHandler extends MessageToMessageDecoder<DefaultFullHttpReques
         }
 
         out.add(result);
+        msg.release();
     }
 }
